@@ -1,0 +1,6 @@
+{
+    "pending": "pending",
+    "processing": "processing",
+    "success": "success",
+    "error": "error"
+}
