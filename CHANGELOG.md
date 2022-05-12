@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [2.0.0] - 2022-05-12
+### Changed
+- Using **Commerce** lambda function `SaveAccountProcess`
+
 ## [1.0.0] - 2020-12-03
 ### Added
 - Build Status, Coverage Status, NPM Publish Github's Workflows

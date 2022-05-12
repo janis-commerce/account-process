@@ -8,7 +8,8 @@
     "test-ci": "nyc --reporter=lcov --reporter=text-summary mocha --exit --recursive tests/",
     "watch-test": "export TEST_ENV=true; mocha --exit -R nyan -w --recursive tests/",
     "coverage": "nyc npm test",
-    "lint": "eslint lib/ tests/"
+    "lint": "eslint lib/ tests/",
+    "prepare": "husky install"
   },
   "repository": {
     "type": "git",
@@ -22,14 +23,14 @@
   "license": "ISC",
   "homepage": "https://github.com/janis-commerce/account-process.git#readme",
   "devDependencies": {
-    "@janiscommerce/api-session": "^3.0.0",
-    "eslint": "^7.14.0",
+    "@janiscommerce/api-session": "^3.3.1",
+    "eslint": "^7.32.0",
     "eslint-config-airbnb-base": "^13.1.0",
-    "eslint-plugin-import": "^2.22.1",
-    "husky": "^4.3.0",
-    "mocha": "^8.2.1",
+    "eslint-plugin-import": "^2.26.0",
+    "husky": "^7.0.4",
+    "mocha": "^8.4.0",
     "nyc": "^15.1.0",
-    "sinon": "^9.2.1"
+    "sinon": "^14.0.0"
   },
   "files": [
     "lib/"
@@ -38,6 +39,6 @@
     "test": "tests"
   },
   "dependencies": {
-    "@janiscommerce/microservice-call": "^4.1.2"
+    "@janiscommerce/lambda": "^3.7.1"
   }
 }
