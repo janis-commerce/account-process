@@ -14,7 +14,6 @@ const {
 describe('AccountProcess', () => {
 
 	const session = new ApiSession({
-		serviceName: 'catalog',
 		clientCode: 'defaultClient'
 	});
 
@@ -24,13 +23,39 @@ describe('AccountProcess', () => {
 	const invalidAccountId = 1;
 	const invalidProcessName = 1;
 
+
+	const basicParams = [
+		validAccountId,
+		validProcessName,
+		'pending'
+	];
+
+	const commerceAccountProcessId = '5dea9fc691240d0008408300';
+
+	const createInvokeResponse = (code, body) => ({ code, body });
+
+	const assertSaveAccountProcess = data => {
+		sinon.assert.calledOnceWithExactly(Invoker.serviceClientCall, 'commerce', 'SaveAccountProcess', session, {
+			...data,
+			service: 'catalog'
+		});
+	};
+
+	let originalEnv;
+
+	beforeEach(() => {
+		originalEnv = { ...process.env };
+	});
+
 	afterEach(() => {
+		process.env = originalEnv;
 		sinon.restore();
 	});
 
 	context('When send called with invalid or missing parameters', () => {
 
 		beforeEach(() => {
+			process.env.JANIS_SERVICE_NAME = 'catalog';
 			sinon.spy(Invoker, 'serviceClientCall');
 		});
 
@@ -67,30 +92,19 @@ describe('AccountProcess', () => {
 
 	context('When send called with valid parameters', () => {
 
-		const basicParams = [
-			validAccountId,
-			validProcessName,
-			'pending'
-		];
-
-		const commerceAccountProcessId = '5dea9fc691240d0008408300';
-
-		const createInvokeResponse = (code, body) => ({ code, body });
-
-		const assertSaveAccountProcess = data => {
-			sinon.assert.calledOnceWithExactly(Invoker.serviceClientCall, 'commerce', 'SaveAccountProcess', session, {
-				...data,
-				service: session.serviceName
-			});
-		};
+		beforeEach(() => {
+			process.env.JANIS_SERVICE_NAME = 'catalog';
+		});
 
 		it('Should reject if No Session is found', async () => {
+
+			process.env.JANIS_SERVICE_NAME = 'catalog';
 
 			const accountProcessWithoutSession = new AccountProcess();
 
 			sinon.stub(Invoker, 'serviceClientCall');
 
-			await assert.rejects(accountProcessWithoutSession.send(...basicParams), { code: AccountProcessError.codes.NO_SESSION });
+			await assert.rejects(accountProcessWithoutSession.send(...basicParams), { code: AccountProcessError.codes.SESSION_MISSING });
 
 			sinon.assert.notCalled(Invoker.serviceClientCall);
 		});
@@ -270,4 +284,20 @@ describe('AccountProcess', () => {
 			});
 		});
 	});
+
+	context('When no JANIS_SERVICE_NAME is set', () => {
+		it('Should reject if env JANIS_SERVICE_NAME is found', async () => {
+
+			const accountProcess = session.getSessionInstance(AccountProcess);
+
+			sinon.stub(Invoker, 'serviceClientCall');
+
+			await assert.rejects(accountProcess.send(...basicParams), { code: AccountProcessError.codes.SERVICE_NAME_MISSING });
+
+			sinon.assert.notCalled(Invoker.serviceClientCall);
+		});
+
+	});
+
+
 });

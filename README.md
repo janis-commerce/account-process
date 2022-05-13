@@ -13,6 +13,10 @@ npm install @janiscommerce/account-process
 
 ## :new: Changes from _v2.0.0_
 
+### `service` field
+
+Env variable `JANIS_SERVICE_NAME` is **required** for saving and AccountProcess.
+
 ### Using Lambda instead of Api
 
 Now the package uses Commerce Lambda function `SaveAccountProcess` instead of old Api.
@@ -86,6 +90,7 @@ The response of `send()` has changed cause now we are using [lambda](https://www
 
 :warning: This package need to be instance with [API-Session](https://github.com/janis-commerce/api-session), before use.
 
+**`JANIS_SERVICE_NAME`** (required): The name of the service that will create the AccountProcess.
 
 :x: Wrong:
 ```js

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [2.0.1] - 2022-05-12
+### Fixed
+- `service` field is used from `process.env.JANIS_SERVICE_NAME`
+
 ## [2.0.0] - 2022-05-12
 ### Changed
 - Using **Commerce** lambda function `SaveAccountProcess`
