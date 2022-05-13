@@ -4,12 +4,83 @@
 [![Coverage Status](https://coveralls.io/repos/github/janis-commerce/account-process/badge.svg?branch=master)](https://coveralls.io/github/janis-commerce/account-process?branch=master)
 [![npm version](https://badge.fury.io/js/%40janiscommerce%2Faccount-process.svg)](https://www.npmjs.com/package/@janiscommerce/account-process)
 
-Update Process for Account in Commerce
+Creates or Updates a Process of Janis Commerce Service Account
 
 ## :arrow_down: Installation
 ```sh
 npm install @janiscommerce/account-process
 ```
+
+## :new: Changes from _v2.0.0_
+
+### Using Lambda instead of Api
+
+Now the package uses Commerce Lambda function `SaveAccountProcess` instead of old Api.
+
+### Response
+
+The response of `send()` has changed cause now we are using [lambda](https://www.npmjs.com/package/@janiscommerce/lambda) instead of [microservice-call](https://www.npmjs.com/package/@janiscommerce/microservice-call).
+
+<details>
+    <summary>Response 200 Example</summary>
+
+**Previous response**
+
+```json
+{
+    "statusCode": 200,
+    "body": {
+        "id": "5dea9fc691240d0008408000",
+    }
+}
+```
+
+**Current response**
+
+```json
+{
+    "statusCode": 200,
+    "payload": {
+        "code": 200,
+        "accountProcess": {
+            "id": "5dea9fc691240d0008408000",
+            "service": "my-service-name",
+            "process": "import-readme",
+            "accountId": "5dea9fc691240d00084083f8",
+            "status": "pending"
+        }
+    }
+}
+```
+</details>
+
+<details>
+    <summary>Response 404 Example</summary>
+
+**Previous response**
+
+```json
+{
+    "statusCode": 404,
+    "body": {
+        "message": "Account not found",
+    }
+}
+```
+
+**Current response**
+
+```json
+{
+    "statusCode": 200,
+    "payload": {
+        "code": 404,
+        "errorMessage": "Account not found for ID '5dea9fc691240d0008408000'"
+    }
+}
+```
+</details>
+
 
 ## :wrench: Configuration
 
@@ -44,8 +115,10 @@ const accountProcess = session.getSessionInstance(AccountProcess);
             * `dateStart`: *Boolean* `true` or Date *Object*
             * `dateEnd`: *Boolean* `true` or Date *Object*
     * Returns: *Object*
-        * `statusCode`: HTTP Status code of the call to Commerce
-        * `body`: Body response
+        * `statusCode`: Status code response from the **Commerce** Lambda `SaveAccountProcess`
+        * `payload`: *Object*
+            * `code`: *Number*. Status code with the process response
+            * `accountProcess`: *Object*. The AccountProcess saved in Commerce Service
 
 ## :spades: Statuses
 
@@ -73,7 +146,7 @@ This is used to keep an extra information in Account Process API, like a log.
 In the process:
 
 ```js
-await AccountProcess.send(
+await accountProcess.send(
     '5dea9fc691240d00084083f8',
     'import-readme',
     AccountProcess.statuses.pending,
@@ -97,8 +170,11 @@ This is use to set in Account-Process API these properties.
 In the process:
 
 ```js
+
+const accountProcess = this.session.getSessionInstance(AccountProcess);
+
 // Start the process in current date
-await AccountProcess.send(
+await accountProcess.send(
     '5dea9fc691240d00084083f8',
     'import-readme',
     AccountProcess.statuses.pending,
@@ -107,7 +183,7 @@ await AccountProcess.send(
 );
 
 // Start the process in a specific date
-await AccountProcess.send(
+await accountProcess.send(
     '5dea9fc691240d00084083f8',
     'import-readme',
     AccountProcess.statuses.pending,
@@ -116,7 +192,7 @@ await AccountProcess.send(
 );
 
 // Finish the process in current date
-await AccountProcess.send(
+await accountProcess.send(
     '5dea9fc691240d00084083f8',
     'import-readme',
     AccountProcess.statuses.success,
@@ -125,7 +201,7 @@ await AccountProcess.send(
 );
 
 // Finish the process in specific date
-await AccountProcess.send(
+await accountProcess.send(
     '5dea9fc691240d00084083f8',
     'import-readme',
     AccountProcess.statuses.success,
@@ -140,7 +216,9 @@ await AccountProcess.send(
 
 ```js
 
-const response = await AccountProcess.send(
+const accountProcess = this.session.getSessionInstance(AccountProcess);
+
+const response = await accountProcess.send(
     '5dea9fc691240d00084083f8',
     'import-readme',
     AccountProcess.statuses.pending
@@ -149,8 +227,15 @@ const response = await AccountProcess.send(
 /*
 Response: {
     statusCode: 200,
-    body: {
-        id: '5dea9fc691240d0008408000'
+    payload: {
+        code: 200,
+        accountProcess: {
+            id: '5dea9fc691240d0008408000', // the id of the AccountProcess created or updated
+            service: 'my-service-name',
+            process: 'import-readme',
+            accountId: '5dea9fc691240d00084083f8',
+            status: 'pending'
+        }
     }
 }
 
@@ -161,7 +246,9 @@ Response: {
 
 ```js
 
-const response = await AccountProcess.send(
+const accountProcess = this.session.getSessionInstance(AccountProcess);
+
+const response = await accountProcess.send(
     '5dea9fc691240d00084083f8',
     'import-readme',
     AccountProcess.statuses.processing,
@@ -170,20 +257,23 @@ const response = await AccountProcess.send(
 
 /*
 Response: {
-    statusCode: 404,
-    body: {
-        message: 'Account not found'
+    statusCode: 200,
+    payload: {
+        code: 404,
+        errorMessage: 'Account not found for ID \'5dea9fc691240d00084083f8\''
     }
 }
 
 */
 
 ```
-* Send with a Start Date, and error status, and Commerce is failing
+* Send with a Start Date and error status, and Commerce is failing
 
 ```js
 
-const response = await AccountProcess.send(
+const accountProcess = this.session.getSessionInstance(AccountProcess);
+
+const response = await accountProcess.send(
     '5dea9fc691240d00084083f8',
     'import-readme',
     AccountProcess.statuses.error,
@@ -193,10 +283,7 @@ const response = await AccountProcess.send(
 
 /*
 Response: {
-    statusCode: 503,
-    body: {
-        message: 'Timeout'
-    }
+    statusCode: 503
 }
 
 */
@@ -207,19 +294,30 @@ Response: {
 
 ```js
 
-const response = await AccountProcess.send(
+const accountProcess = this.session.getSessionInstance(AccountProcess);
+
+const response = await accountProcess.send(
     '5dea9fc691240d00084083f8',
     'import-readme',
     AccountProcess.statuses.success,
-    null // No Content,
+    { importedCount: 56400 },
     { endDate: true }
 );
 
 /*
 Response: {
     statusCode: 200,
-    body: {
-        id: '5dea9fc691240d0008408000'
+    payload: {
+        code: 200,
+        accountProcess: {
+            id: '5dea9fc691240d0008408000',
+            service: 'my-service-name',
+            process: 'import-readme',
+            accountId: '5dea9fc691240d00084083f8',
+            status: 'success'
+            endDate: '2022-05-13T13:26:25.414Z',
+            content: { importedCount: 56400 }
+        }
     }
 }
 

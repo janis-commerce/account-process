@@ -9,19 +9,14 @@ const { ApiSession } = require('@janiscommerce/api-session');
 const {
 	AccountProcess,
 	AccountProcessError
-} = require('../lib');
+} = require('../');
 
-describe('Account-Process', () => {
+describe('AccountProcess', () => {
 
 	const session = new ApiSession({
-		userIsDev: true,
-		clientCode: 'defaultClient',
-		permissions: [],
-		locations: [],
-		hasAccessToAllLocations: true
+		serviceName: 'catalog',
+		clientCode: 'defaultClient'
 	});
-
-	const accountProcess = session.getSessionInstance(AccountProcess);
 
 	const validAccountId = '5dea9fc691240d00084083f8';
 	const validProcessName = 'test-process';
@@ -35,37 +30,37 @@ describe('Account-Process', () => {
 
 	context('When send called with invalid or missing parameters', () => {
 
+		beforeEach(() => {
+			sinon.spy(Invoker, 'serviceClientCall');
+		});
+
+		afterEach(() => {
+			sinon.assert.notCalled(Invoker.serviceClientCall);
+		});
+
 		[
-			['Accounts Ids', [], AccountProcessError.codes.INVALID_ACCOUNTS_ID],
-			['Process Name', [validAccountId], AccountProcessError.codes.INVALID_PROCESS_NAME],
-			['Status', [validAccountId, validProcessName], AccountProcessError.codes.INVALID_STATUS]
+			['accountId', [], AccountProcessError.codes.INVALID_ACCOUNTS_ID],
+			['process', [validAccountId], AccountProcessError.codes.INVALID_PROCESS_NAME],
+			['status', [validAccountId, validProcessName], AccountProcessError.codes.INVALID_STATUS]
 		].forEach(([fieldName, params, errorCode]) => {
 
-			it(`Should reject if ${fieldName} is not passed`, async () => {
-
-				sinon.stub(MsCall.prototype, 'safeCall');
-
+			it(`Should reject if ${fieldName} is missing`, async () => {
+				const accountProcess = session.getSessionInstance(AccountProcess);
 				await assert.rejects(accountProcess.send(...params), { code: errorCode });
-
-				sinon.assert.notCalled(MsCall.prototype.safeCall);
 			});
 		});
 
 		[
-			['Account Id', [invalidAccountId, validProcessName, AccountProcess.statuses.pending], AccountProcessError.codes.INVALID_ACCOUNTS_ID],
-			['Process Name', [validAccountId, invalidProcessName], AccountProcessError.codes.INVALID_PROCESS_NAME],
-			['Status', [validAccountId, validProcessName, 'testing'], AccountProcessError.codes.INVALID_STATUS],
-			['Content', [validAccountId, validProcessName, AccountProcess.statuses.pending, 'Message'], AccountProcessError.codes.INVALID_CONTENT],
-			['Options', [validAccountId, validProcessName, AccountProcess.statuses.pending, null, true], AccountProcessError.codes.INVALID_OPTIONS]
+			['accountId', [invalidAccountId, validProcessName, 'pending'], AccountProcessError.codes.INVALID_ACCOUNTS_ID],
+			['process', [validAccountId, invalidProcessName], AccountProcessError.codes.INVALID_PROCESS_NAME],
+			['status', [validAccountId, validProcessName, 'testing'], AccountProcessError.codes.INVALID_STATUS],
+			['content', [validAccountId, validProcessName, 'pending', 'Message'], AccountProcessError.codes.INVALID_CONTENT],
+			['options', [validAccountId, validProcessName, 'pending', null, true], AccountProcessError.codes.INVALID_OPTIONS]
 		].forEach(([fieldName, params, errorCode]) => {
 
 			it(`Should reject if ${fieldName} is invalid`, async () => {
-
-				sinon.stub(MsCall.prototype, 'safeCall');
-
+				const accountProcess = session.getSessionInstance(AccountProcess);
 				await assert.rejects(accountProcess.send(...params), { code: errorCode });
-
-				sinon.assert.notCalled(MsCall.prototype.safeCall);
 			});
 		});
 	});
@@ -75,160 +70,204 @@ describe('Account-Process', () => {
 		const basicParams = [
 			validAccountId,
 			validProcessName,
-			AccountProcess.statuses.pending
+			'pending'
 		];
 
 		const commerceAccountProcessId = '5dea9fc691240d0008408300';
 
-		const makeMsCallResponse = (statusCode, body) => ({
-			statusCode,
-			body
-		});
+		const createInvokeResponse = (code, body) => ({ code, body });
+
+		const assertSaveAccountProcess = data => {
+			sinon.assert.calledOnceWithExactly(Invoker.serviceClientCall, 'commerce', 'SaveAccountProcess', session, {
+				...data,
+				service: session.serviceName
+			});
+		};
 
 		it('Should reject if No Session is found', async () => {
 
 			const accountProcessWithoutSession = new AccountProcess();
 
-			sinon.stub(MsCall.prototype, 'safeCall');
+			sinon.stub(Invoker, 'serviceClientCall');
 
 			await assert.rejects(accountProcessWithoutSession.send(...basicParams), { code: AccountProcessError.codes.NO_SESSION });
 
-			sinon.assert.notCalled(MsCall.prototype.safeCall);
+			sinon.assert.notCalled(Invoker.serviceClientCall);
 		});
 
 		it('Should call Commerce API with minimal fields', async () => {
 
-			sinon.stub(MsCall.prototype, 'safeCall').returns(makeMsCallResponse(200, { id: commerceAccountProcessId }));
+			sinon.stub(Invoker, 'serviceClientCall')
+				.resolves(createInvokeResponse(200, { id: commerceAccountProcessId }));
 
-			assert.deepStrictEqual(await accountProcess.send(...basicParams), { statusCode: 200, body: { id: commerceAccountProcessId } });
+			const accountProcess = session.getSessionInstance(AccountProcess);
 
-			sinon.assert.calledOnceWithExactly(MsCall.prototype.safeCall, 'commerce', 'account-process', 'update', {
+			assert.deepStrictEqual(await accountProcess.send(...basicParams), { code: 200, body: { id: commerceAccountProcessId } });
+
+			assertSaveAccountProcess({
 				process: validProcessName,
-				status: AccountProcess.statuses.pending
-			}, null, { id: validAccountId });
+				status: 'pending',
+				accountId: validAccountId
+			});
 		});
 
 		it('Should call Commerce API with content', async () => {
 
-			sinon.stub(MsCall.prototype, 'safeCall').returns(makeMsCallResponse(200, { id: commerceAccountProcessId }));
+			sinon.stub(Invoker, 'serviceClientCall')
+				.resolves(createInvokeResponse(200, { id: commerceAccountProcessId }));
+
+			const accountProcess = session.getSessionInstance(AccountProcess);
 
 			assert.deepStrictEqual(await accountProcess.send(...basicParams, { message: 'Ok' }),
-				{ statusCode: 200, body: { id: commerceAccountProcessId } });
+				{ code: 200, body: { id: commerceAccountProcessId } });
 
-			sinon.assert.calledOnceWithExactly(MsCall.prototype.safeCall, 'commerce', 'account-process', 'update', {
+			assertSaveAccountProcess({
 				process: validProcessName,
-				status: AccountProcess.statuses.pending,
-				content: { message: 'Ok' }
-			}, null, { id: validAccountId });
+				status: 'pending',
+				content: { message: 'Ok' },
+				accountId: validAccountId
+			});
 		});
 
 		it('Should call Commerce API with Start Date Option', async () => {
 
-			sinon.stub(MsCall.prototype, 'safeCall').returns(makeMsCallResponse(200, { id: commerceAccountProcessId }));
+			sinon.stub(Invoker, 'serviceClientCall')
+				.resolves(createInvokeResponse(200, { id: commerceAccountProcessId }));
+
+			const accountProcess = session.getSessionInstance(AccountProcess);
 
 			assert.deepStrictEqual(await accountProcess.send(...basicParams, null, { startDate: true }),
-				{ statusCode: 200, body: { id: commerceAccountProcessId } });
+				{ code: 200, body: { id: commerceAccountProcessId } });
 
-			sinon.assert.calledOnceWithExactly(MsCall.prototype.safeCall, 'commerce', 'account-process', 'update', {
+			assertSaveAccountProcess({
 				process: validProcessName,
-				status: AccountProcess.statuses.pending,
-				startDate: sinon.match.date
-			}, null, { id: validAccountId });
+				status: 'pending',
+				startDate: sinon.match.date,
+				accountId: validAccountId
+			});
 		});
 
 		it('Should call Commerce API with a Specific Start Date Option', async () => {
 
-			sinon.stub(MsCall.prototype, 'safeCall').returns(makeMsCallResponse(200, { id: commerceAccountProcessId }));
+			sinon.stub(Invoker, 'serviceClientCall')
+				.resolves(createInvokeResponse(200, { id: commerceAccountProcessId }));
+
+			const accountProcess = session.getSessionInstance(AccountProcess);
 
 			assert.deepStrictEqual(await accountProcess.send(...basicParams, null, { startDate: new Date() }),
-				{ statusCode: 200, body: { id: commerceAccountProcessId } });
+				{ code: 200, body: { id: commerceAccountProcessId } });
 
-			sinon.assert.calledOnceWithExactly(MsCall.prototype.safeCall, 'commerce', 'account-process', 'update', {
+			assertSaveAccountProcess({
 				process: validProcessName,
-				status: AccountProcess.statuses.pending,
-				startDate: sinon.match.date
-			}, null, { id: validAccountId });
+				status: 'pending',
+				startDate: sinon.match.date,
+				accountId: validAccountId
+			});
 		});
 
 		it('Should call Commerce API with End Date Option', async () => {
 
-			sinon.stub(MsCall.prototype, 'safeCall').returns(makeMsCallResponse(200, { id: commerceAccountProcessId }));
+			sinon.stub(Invoker, 'serviceClientCall')
+				.resolves(createInvokeResponse(200, { id: commerceAccountProcessId }));
+
+			const accountProcess = session.getSessionInstance(AccountProcess);
 
 			assert.deepStrictEqual(await accountProcess.send(...basicParams, null, { endDate: true }),
-				{ statusCode: 200, body: { id: commerceAccountProcessId } });
+				{ code: 200, body: { id: commerceAccountProcessId } });
 
-			sinon.assert.calledOnceWithExactly(MsCall.prototype.safeCall, 'commerce', 'account-process', 'update', {
+			assertSaveAccountProcess({
 				process: validProcessName,
-				status: AccountProcess.statuses.pending,
-				endDate: sinon.match.date
-			}, null, { id: validAccountId });
+				status: 'pending',
+				endDate: sinon.match.date,
+				accountId: validAccountId
+			});
 		});
 
 		it('Should call Commerce API with specific End Date Option', async () => {
 
-			sinon.stub(MsCall.prototype, 'safeCall').returns(makeMsCallResponse(200, { id: commerceAccountProcessId }));
+			sinon.stub(Invoker, 'serviceClientCall')
+				.resolves(createInvokeResponse(200, { id: commerceAccountProcessId }));
+
+			const accountProcess = session.getSessionInstance(AccountProcess);
 
 			assert.deepStrictEqual(await accountProcess.send(...basicParams, null, { endDate: new Date() }),
-				{ statusCode: 200, body: { id: commerceAccountProcessId } });
+				{ code: 200, body: { id: commerceAccountProcessId } });
 
-			sinon.assert.calledOnceWithExactly(MsCall.prototype.safeCall, 'commerce', 'account-process', 'update', {
+			assertSaveAccountProcess({
 				process: validProcessName,
-				status: AccountProcess.statuses.pending,
-				endDate: sinon.match.date
-			}, null, { id: validAccountId });
+				status: 'pending',
+				endDate: sinon.match.date,
+				accountId: validAccountId
+			});
 		});
 
 		it('Should call Commerce API with minimal fields if Options has an invalid field', async () => {
 
-			sinon.stub(MsCall.prototype, 'safeCall').returns(makeMsCallResponse(200, { id: commerceAccountProcessId }));
+			sinon.stub(Invoker, 'serviceClientCall')
+				.resolves(createInvokeResponse(200, { id: commerceAccountProcessId }));
+
+			const accountProcess = session.getSessionInstance(AccountProcess);
 
 			assert.deepStrictEqual(await accountProcess.send(...basicParams, null, { makeMagic: true }),
-				{ statusCode: 200, body: { id: commerceAccountProcessId } });
+				{ code: 200, body: { id: commerceAccountProcessId } });
 
-			sinon.assert.calledOnceWithExactly(MsCall.prototype.safeCall, 'commerce', 'account-process', 'update', {
+			assertSaveAccountProcess({
 				process: validProcessName,
-				status: AccountProcess.statuses.pending
-			}, null, { id: validAccountId });
+				status: 'pending',
+				accountId: validAccountId
+			});
 		});
 
 		it('Should call Commerce API with full fields', async () => {
 
-			sinon.stub(MsCall.prototype, 'safeCall').returns(makeMsCallResponse(200, { id: commerceAccountProcessId }));
+			sinon.stub(Invoker, 'serviceClientCall')
+				.resolves(createInvokeResponse(200, { id: commerceAccountProcessId }));
+
+			const accountProcess = session.getSessionInstance(AccountProcess);
 
 			assert.deepStrictEqual(await accountProcess.send(...basicParams, { message: 'Ok' }, { startDate: true, endDate: true }),
-				{ statusCode: 200, body: { id: commerceAccountProcessId } });
+				{ code: 200, body: { id: commerceAccountProcessId } });
 
-			sinon.assert.calledOnceWithExactly(MsCall.prototype.safeCall, 'commerce', 'account-process', 'update', {
+			assertSaveAccountProcess({
 				process: validProcessName,
-				status: AccountProcess.statuses.pending,
+				status: 'pending',
 				content: { message: 'Ok' },
 				startDate: sinon.match.date,
-				endDate: sinon.match.date
-			}, null, { id: validAccountId });
+				endDate: sinon.match.date,
+				accountId: validAccountId
+			});
 		});
 
 		it('Should return 404 as response if Account is not found in Commerce', async () => {
 
-			sinon.stub(MsCall.prototype, 'safeCall').returns(makeMsCallResponse(404, { message: 'Account not found' }));
+			sinon.stub(Invoker, 'serviceClientCall')
+				.resolves(createInvokeResponse(404, { message: 'Account not found' }));
 
-			assert.deepStrictEqual(await accountProcess.send(...basicParams), { statusCode: 404, body: { message: 'Account not found' } });
+			const accountProcess = session.getSessionInstance(AccountProcess);
 
-			sinon.assert.calledOnceWithExactly(MsCall.prototype.safeCall, 'commerce', 'account-process', 'update', {
+			assert.deepStrictEqual(await accountProcess.send(...basicParams), { code: 404, body: { message: 'Account not found' } });
+
+			assertSaveAccountProcess({
 				process: validProcessName,
-				status: AccountProcess.statuses.pending
-			}, null, { id: validAccountId });
+				status: 'pending',
+				accountId: validAccountId
+			});
 		});
 
 		it('Should return 500 as response if Commerce fails', async () => {
 
-			sinon.stub(MsCall.prototype, 'safeCall').returns(makeMsCallResponse(500, { message: 'Internal Commerce Error' }));
+			sinon.stub(Invoker, 'serviceClientCall')
+				.resolves(createInvokeResponse(500, { message: 'Internal Commerce Error' }));
 
-			assert.deepStrictEqual(await accountProcess.send(...basicParams), { statusCode: 500, body: { message: 'Internal Commerce Error' } });
+			const accountProcess = session.getSessionInstance(AccountProcess);
 
-			sinon.assert.calledOnceWithExactly(MsCall.prototype.safeCall, 'commerce', 'account-process', 'update', {
+			assert.deepStrictEqual(await accountProcess.send(...basicParams), { code: 500, body: { message: 'Internal Commerce Error' } });
+
+			assertSaveAccountProcess({
 				process: validProcessName,
-				status: AccountProcess.statuses.pending
-			}, null, { id: validAccountId });
+				status: 'pending',
+				accountId: validAccountId
+			});
 		});
 	});
 });
