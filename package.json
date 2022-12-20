@@ -39,6 +39,6 @@
     "test": "tests"
   },
   "dependencies": {
-    "@janiscommerce/lambda": "^3.7.1"
+    "@janiscommerce/lambda": "^4.1.1"
   }
 }
