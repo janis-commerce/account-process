@@ -1,6 +1,6 @@
 {
   "name": "@janiscommerce/account-process",
-  "version": "2.0.2",
+  "version": "3.0.0",
   "description": "Creates or Updates a Process of Janis Commerce Service Account",
   "main": "lib/index.js",
   "scripts": {
