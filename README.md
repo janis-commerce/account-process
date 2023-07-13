@@ -11,6 +11,10 @@ Creates or Updates a Process of Janis Commerce Service Account
 npm install @janiscommerce/account-process
 ```
 
+## :new: Changes from _v3.0.0_
+
+Using `@janiscommerce/lambda` with version `6.x.y` to use `AWS SDK` in `V3`.
+
 ## :new: Changes from _v2.0.0_
 
 ### `service` field
