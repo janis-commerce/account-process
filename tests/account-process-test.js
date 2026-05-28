@@ -9,7 +9,7 @@ const { ApiSession } = require('@janiscommerce/api-session');
 const {
 	AccountProcess,
 	AccountProcessError
-} = require('../');
+} = require('..');
 
 describe('AccountProcess', () => {
 
@@ -22,7 +22,6 @@ describe('AccountProcess', () => {
 
 	const invalidAccountId = 1;
 	const invalidProcessName = 1;
-
 
 	const basicParams = [
 		validAccountId,
@@ -298,6 +297,5 @@ describe('AccountProcess', () => {
 		});
 
 	});
-
 
 });
